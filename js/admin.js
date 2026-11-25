@@ -19,13 +19,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  /* Secure Owner Login (Server-Side Scrypt Verified) */
+  /* Secure Owner Login (server-side verification) */
   const loginForm = document.getElementById('login-form');
   if (loginForm) {
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       const email = document.getElementById('login-email').value.trim();
-      const password = document.getElementById('login-password').value.trim();
+      const password = document.getElementById('login-password').value;
       const errorEl = document.getElementById('login-error');
       const submitBtn = document.getElementById('btn-login-submit');
 
@@ -54,18 +54,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  /* Owner Password Security Modal */
+  /* Owner credential management information */
   const securityModal = document.getElementById('security-modal');
   const btnOpenSecurity = document.getElementById('btn-open-security');
   const securityModalClose = document.getElementById('security-modal-close');
-  const changePasswordForm = document.getElementById('change-password-form');
-  const securityError = document.getElementById('security-error');
 
   if (btnOpenSecurity && securityModal) {
     btnOpenSecurity.addEventListener('click', () => {
       securityModal.style.display = 'flex';
-      if (securityError) securityError.classList.remove('active');
-      changePasswordForm?.reset();
     });
   }
 
@@ -75,35 +71,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     securityModal.addEventListener('click', (e) => {
       if (e.target === securityModal) securityModal.style.display = 'none';
-    });
-  }
-
-  if (changePasswordForm) {
-    changePasswordForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const currentPwd = document.getElementById('current-owner-password').value;
-      const newPwd = document.getElementById('new-owner-password').value;
-
-      if (newPwd.length < 8) {
-        if (securityError) {
-          securityError.textContent = 'New password must be at least 8 characters long.';
-          securityError.classList.add('active');
-        }
-        return;
-      }
-
-      const res = await FNA_DB.changePassword(currentPwd, newPwd);
-      if (res.success) {
-        securityModal.style.display = 'none';
-        changePasswordForm.reset();
-        showToast('Master owner password updated successfully.', 'success');
-      } else {
-        if (securityError) {
-          securityError.textContent = res.error || 'Failed to update password.';
-          securityError.classList.add('active');
-        }
-        showToast(res.error || 'Failed to update password.', 'error');
-      }
     });
   }
 

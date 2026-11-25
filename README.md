@@ -13,7 +13,7 @@ Official portfolio web application, client inquiry pipeline, and studio CMS for 
 - **Owner CRM & Portfolio CMS (`admin.html`)**:
   - Client inquiry registry with search, channel/budget filters, status updates, printable client dossiers, and CSV export (with formula-injection sanitization).
   - Portfolio CMS to publish, edit, and delete works (supports up to 15 MB image uploads or image URLs).
-  - Hybrid persistence: uses `server.js` JSON storage and `HttpOnly; SameSite=Strict` sessions when the Node server is running, with automatic SHA-256 + `localStorage` fallback when opened statically.
+  - Server-side owner login configured with hosting environment variables and `HttpOnly; SameSite=Strict` sessions. Credentials are not written to project data files, and login is unavailable when the server is offline.
 
 ---
 
@@ -28,13 +28,12 @@ Official portfolio web application, client inquiry pipeline, and studio CMS for 
 ├── css/
 │   └── styles.css      # Design tokens (Onest, JetBrains Mono, regional fonts) & layouts
 ├── js/
-│   ├── data.js         # Shared data store, resilient API router & SHA-256 offline auth
+│   ├── data.js         # Shared data store and API router
 │   ├── app.js          # Slider engine, dynamic project index, search & drafting cursor
 │   └── admin.js        # CRM dashboard, portfolio CMS, modals & CSV export
 ├── data/
 │   ├── portfolio.json  # Published portfolio items
-│   ├── inquiries.json  # Client inquiries store
-│   └── owner_auth.json # Salted scrypt owner credentials (protected by server.js)
+│   └── inquiries.json  # Client inquiries store
 └── images/             # Studio photography (fna office.jpeg, logo.png, project assets)
 ```
 
@@ -45,17 +44,21 @@ Official portfolio web application, client inquiry pipeline, and studio CMS for 
 Requires **Node.js** (uses built-in `http`, `fs`, `path`, and `crypto` modules — no `npm install` needed).
 
 ```bash
-node server.js
+FNA_OWNER_EMAIL='your-email@example.com' FNA_OWNER_PASSWORD='use-a-long-unique-password' node server.js
 ```
 
 Once running:
 - **Studio Website**: `http://localhost:3000/`
 - **Admin Portal**: `http://localhost:3000/admin.html`
 
-### Optional Environment Variables
-- `PORT` — HTTP port (defaults to `3000`)
-- `HOST` — Bind address (defaults to all local interfaces)
-- `FNA_OWNER_EMAIL` / `FNA_OWNER_PASSWORD` — Initial owner credentials used when `data/owner_auth.json` is created on first run. Passwords can be updated anytime from the **Security** modal inside `admin.html`.
+### Environment Variables
+- `FNA_OWNER_EMAIL` — Required owner login email.
+- `FNA_OWNER_PASSWORD` — Required owner password. Set a long, unique value in your host's secret/environment settings.
+- `FNA_OWNER_NAME` — Optional display name (defaults to `Principal Architect Aayushi`).
+- `PORT` — HTTP port (defaults to `3000`).
+- `HOST` — Bind address (defaults to all local interfaces).
+
+The email and password are read into server memory at startup and are never stored in the JSON data files. To change them, update the host's environment settings and restart/redeploy. Use HTTPS when hosting the site; the session cookie is marked `Secure` on HTTPS requests. Do not open `admin.html` as a static file; admin login requires the Node server.
 
 ---
 

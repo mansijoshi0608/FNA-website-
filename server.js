@@ -1,7 +1,7 @@
 /**
  * FNA Design Lab — Hardened Atelier Web & Security Engine
  * Features:
- *  - Secure Server-Side Owner Authentication (Scrypt hashing + constant-time comparison)
+ *  - Single-owner Server-Side Authentication (credentials provided by environment)
  *  - HttpOnly, SameSite=Strict Session Management with 2-hour idle timeouts
  *  - Anti-Brute-Force Rate Limiting (5 failed attempts locks for 15 minutes)
  *  - Path Traversal & File Inclusion Shields (Blocks data/, hidden files, server.js)
@@ -16,12 +16,19 @@ const path = require('path');
 const crypto = require('crypto');
 
 const PORT = process.env.PORT || 3000;
-const HOST = process.env.HOST || undefined;
+const HOST = process.env.HOST || '0.0.0.0';
 const ROOT = path.resolve(__dirname);
 const DATA_DIR = path.join(ROOT, 'data');
-const AUTH_FILE = path.join(DATA_DIR, 'owner_auth.json');
 const INQUIRIES_FILE = path.join(DATA_DIR, 'inquiries.json');
 const PORTFOLIO_FILE = path.join(DATA_DIR, 'portfolio.json');
+const OWNER_EMAIL = process.env.FNA_OWNER_EMAIL;
+const OWNER_PASSWORD = process.env.FNA_OWNER_PASSWORD;
+const OWNER_NAME = process.env.FNA_OWNER_NAME || 'Principal Architect Aayushi';
+
+if (!OWNER_EMAIL || !OWNER_PASSWORD) {
+  console.error('Missing required FNA_OWNER_EMAIL or FNA_OWNER_PASSWORD environment variable.');
+  process.exit(1);
+}
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -54,18 +61,14 @@ function setSecurityHeaders(res) {
   );
 }
 
-/* ─── Cryptographic Password Hashing ─── */
-function hashPassword(password, salt) {
-  return crypto.scryptSync(password, salt, 64).toString('hex');
+function constantTimeEqual(left, right) {
+  const a = crypto.createHash('sha256').update(String(left)).digest();
+  const b = crypto.createHash('sha256').update(String(right)).digest();
+  return crypto.timingSafeEqual(a, b);
 }
 
-function verifyPassword(password, salt, storedHash) {
-  try {
-    const hash = crypto.scryptSync(password, salt, 64).toString('hex');
-    return crypto.timingSafeEqual(Buffer.from(hash, 'hex'), Buffer.from(storedHash, 'hex'));
-  } catch (e) {
-    return false;
-  }
+function secureCookie(req) {
+  return req.socket.encrypted || req.headers['x-forwarded-proto'] === 'https' ? '; Secure' : '';
 }
 
 /* ─── Database Initialization ─── */
@@ -74,26 +77,7 @@ function initDataStore() {
     fs.mkdirSync(DATA_DIR, { recursive: true });
   }
 
-  // 1. Owner Auth
-  if (!fs.existsSync(AUTH_FILE)) {
-    const salt = crypto.randomBytes(16).toString('hex');
-    const defaultEmail = process.env.FNA_OWNER_EMAIL || 'owner@fnadesignlab.com';
-    const defaultPassword = process.env.FNA_OWNER_PASSWORD || 'FnaAtelier#2026!Owner';
-    const passwordHash = hashPassword(defaultPassword, salt);
-
-    const initialAuth = {
-      ownerName: 'Principal Architect Aayushi',
-      email: defaultEmail,
-      salt: salt,
-      passwordHash: passwordHash,
-      createdAt: new Date().toISOString(),
-      lastLogin: null,
-    };
-    fs.writeFileSync(AUTH_FILE, JSON.stringify(initialAuth, null, 2), { mode: 0o600 });
-    console.log(`[AUTH INITIALIZED] Owner account configured for: ${defaultEmail}`);
-  }
-
-  // 2. Portfolio Store
+  // Portfolio Store
   if (!fs.existsSync(PORTFOLIO_FILE)) {
     const initialPortfolio = [
       {
@@ -444,13 +428,8 @@ const server = http.createServer(async (req, res) => {
           return sendError(res, 400, 'Email and password are required.');
         }
 
-        const authData = readJson(AUTH_FILE, null);
-        if (!authData) {
-          return sendError(res, 500, 'Authentication subsystem uninitialized.');
-        }
-
-        const isEmailMatch = email.trim().toLowerCase() === authData.email.toLowerCase();
-        const isPasswordMatch = verifyPassword(password, authData.salt, authData.passwordHash);
+        const isEmailMatch = constantTimeEqual(email.trim().toLowerCase(), OWNER_EMAIL.trim().toLowerCase());
+        const isPasswordMatch = constantTimeEqual(password, OWNER_PASSWORD);
 
         if (!isEmailMatch || !isPasswordMatch) {
           recordFailedLogin(clientIp);
@@ -467,23 +446,19 @@ const server = http.createServer(async (req, res) => {
         const expiresAt = Date.now() + 2 * 60 * 60 * 1000; // 2 hours
 
         activeSessions.set(sessionToken, {
-          email: authData.email,
-          ownerName: authData.ownerName || 'Principal Architect Aayushi',
+          email: OWNER_EMAIL,
+          ownerName: OWNER_NAME,
           expiresAt,
           createdAt: Date.now(),
         });
 
-        // Record last login
-        authData.lastLogin = new Date().toISOString();
-        writeJson(AUTH_FILE, authData);
-
-        const cookieHeader = `fna_owner_session=${sessionToken}; HttpOnly; SameSite=Strict; Path=/; Max-Age=7200`;
+        const cookieHeader = `fna_owner_session=${sessionToken}; HttpOnly; SameSite=Strict; Path=/; Max-Age=7200${secureCookie(req)}`;
         return sendJson(res, 200, {
           success: true,
           message: 'Owner authenticated successfully.',
           owner: {
-            name: authData.ownerName,
-            email: authData.email,
+            name: OWNER_NAME,
+            email: OWNER_EMAIL,
           },
         }, { 'Set-Cookie': cookieHeader });
       } catch (err) {
@@ -498,46 +473,11 @@ const server = http.createServer(async (req, res) => {
       if (token) {
         activeSessions.delete(token);
       }
-      const clearCookie = `fna_owner_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0`;
+      const clearCookie = `fna_owner_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0${secureCookie(req)}`;
       return sendJson(res, 200, { success: true, message: 'Signed out.' }, { 'Set-Cookie': clearCookie });
     }
 
-    // 4. Auth: Change Owner Password (Owner Only)
-    if (pathname === '/api/auth/change-password' && method === 'POST') {
-      const session = getAuthenticatedSession(req);
-      if (!session) {
-        return sendError(res, 401, 'Unauthorized. Owner session required.');
-      }
-
-      try {
-        const { currentPassword, newPassword } = await parseBody(req);
-        if (!currentPassword || !newPassword) {
-          return sendError(res, 400, 'Current and new password are required.');
-        }
-
-        if (newPassword.length < 8) {
-          return sendError(res, 400, 'New password must be at least 8 characters long.');
-        }
-
-        const authData = readJson(AUTH_FILE, null);
-        if (!verifyPassword(currentPassword, authData.salt, authData.passwordHash)) {
-          return sendError(res, 403, 'Current password verification failed.');
-        }
-
-        // Generate new salt and update hash
-        const newSalt = crypto.randomBytes(16).toString('hex');
-        authData.salt = newSalt;
-        authData.passwordHash = hashPassword(newPassword, newSalt);
-        authData.updatedAt = new Date().toISOString();
-        writeJson(AUTH_FILE, authData);
-
-        return sendJson(res, 200, { success: true, message: 'Owner password successfully updated.' });
-      } catch (err) {
-        return sendError(res, 400, err.message);
-      }
-    }
-
-    // 5. Inquiries: GET (Owner Only)
+    // 4. Inquiries: GET (Owner Only)
     if (pathname === '/api/inquiries' && method === 'GET') {
       const session = getAuthenticatedSession(req);
       if (!session) {

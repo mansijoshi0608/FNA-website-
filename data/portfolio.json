@@ -1,1 +1,90 @@
-[]
+[
+  {
+    "id": "p1",
+    "title": "Monolith Lounge & Pavilion",
+    "category": "Architecture",
+    "year": "2025",
+    "location": "Alibaug, Maharashtra",
+    "image": "images/hero.jpg",
+    "description": "A monolithic concrete pavilion that dissolves the boundary between shelter and landscape. Raw board-formed concrete walls frame curated views of the Arabian Sea.",
+    "index": "01",
+    "createdAt": "2025-03-15T10:00:00Z"
+  },
+  {
+    "id": "p2",
+    "title": "Curved Fluted Suite & Wardrobe System",
+    "category": "Interiors",
+    "year": "2026",
+    "location": "Nagpur, India",
+    "image": "images/feed-curved-wardrobe.jpg",
+    "description": "Full-height custom curved wardrobes with seamless fluted oak panelling, soft radius corners, concealed touch-latches, and warm 2700K indirect LED cove illumination.",
+    "index": "02",
+    "createdAt": "2026-02-10T10:00:00Z"
+  },
+  {
+    "id": "p3",
+    "title": "Cantilevered Study & Acoustic Flutes",
+    "category": "Interiors",
+    "year": "2026",
+    "location": "Gurugram, Haryana",
+    "image": "images/feed-floating-desk.jpg",
+    "description": "Intelligent space planning manifested in a cantilevered solid walnut floating desk with concealed wire-management channels, vertical acoustic wooden slats, and soft ceiling cove wash.",
+    "index": "03",
+    "createdAt": "2026-03-01T10:00:00Z"
+  },
+  {
+    "id": "p4",
+    "title": "Onda Sculpted Lounge Chair",
+    "category": "Objects",
+    "year": "2024",
+    "location": "Studio, Nagpur",
+    "image": "images/furniture-1.jpg",
+    "description": "Sculpted from a single block of Indian rosewood using CNC milling and hand-finishing techniques passed through three generations.",
+    "index": "04",
+    "createdAt": "2024-11-10T10:00:00Z"
+  },
+  {
+    "id": "p5",
+    "title": "Terra House",
+    "category": "Architecture",
+    "year": "2026",
+    "location": "Auroville, Tamil Nadu",
+    "image": "images/arch-2.jpg",
+    "description": "A residence that emerges from its site like a geological formation. Rammed-earth walls provide thermal mass in the tropical climate.",
+    "index": "05",
+    "createdAt": "2026-01-25T10:00:00Z"
+  },
+  {
+    "id": "p6",
+    "title": "Horizon Alpine Residence",
+    "category": "Interiors",
+    "year": "2025",
+    "location": "Kasauli, Himachal Pradesh",
+    "image": "images/interior-1.jpg",
+    "description": "An alpine retreat where every material decision serves the panorama. Floor-to-ceiling glazing dissolves walls into mountain vistas.",
+    "index": "06",
+    "createdAt": "2025-06-20T10:00:00Z"
+  },
+  {
+    "id": "p7",
+    "title": "Communis Dining Table",
+    "category": "Objects",
+    "year": "2026",
+    "location": "Studio, Nagpur",
+    "image": "images/furniture-2.jpg",
+    "description": "A 3.2-meter live-edge oak dining table resting on blackened steel frames. The Communis celebrates the raw character of the timber.",
+    "index": "07",
+    "createdAt": "2026-07-08T10:00:00Z"
+  },
+  {
+    "id": "p8",
+    "title": "Sanctum Spa Suite",
+    "category": "Interiors",
+    "year": "2026",
+    "location": "Goa, India",
+    "image": "images/interior-2.jpg",
+    "description": "A private spa suite where water, stone, and light compose a sensory narrative. A monolithic travertine bathtub is positioned against floor-to-ceiling glass.",
+    "index": "08",
+    "createdAt": "2026-04-12T10:00:00Z"
+  }
+]

@@ -315,24 +315,13 @@
       <div class="dossier-modal-header">
         <div>
           <span class="font-mono text-xs text-terracotta">STUDIO SECURITY</span>
-          <h3 class="font-serif" style="margin: 0.25rem 0; font-size: 1.3rem;">Update Owner Password</h3>
-          <p class="font-mono text-xs text-mist">Server-Side Cryptographic Scrypt Hashing</p>
+          <h3 class="font-serif" style="margin: 0.25rem 0; font-size: 1.3rem;">Owner Login</h3>
+          <p class="font-mono text-xs text-mist">Credentials are managed by your hosting environment.</p>
         </div>
         <button type="button" class="dossier-modal-close" id="security-modal-close" aria-label="Close Security Modal">✕</button>
       </div>
       <div class="dossier-modal-body">
-        <div class="login-error" id="security-error" style="margin-bottom: 1rem;"></div>
-        <form id="change-password-form">
-          <div class="form-group" style="margin-bottom: 1rem;">
-            <label class="form-label" for="current-owner-password">Current Password</label>
-            <input class="form-input flat-input" type="password" id="current-owner-password" required placeholder="Enter current password" autocomplete="current-password">
-          </div>
-          <div class="form-group" style="margin-bottom: 1.25rem;">
-            <label class="form-label" for="new-owner-password">New Password (Min. 8 characters)</label>
-            <input class="form-input flat-input" type="password" id="new-owner-password" required placeholder="Minimum 8 characters" minlength="8" autocomplete="new-password">
-          </div>
-          <button type="submit" class="login-btn flat-btn" style="width: 100%;">Update Master Password →</button>
-        </form>
+        <p>To change the login, update <code>FNA_OWNER_EMAIL</code> or <code>FNA_OWNER_PASSWORD</code> in your hosting provider’s environment settings, then restart or redeploy the site. These values are not saved in the website’s data files.</p>
       </div>
     </div>
   </div>

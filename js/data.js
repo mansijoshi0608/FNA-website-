@@ -382,69 +382,6 @@ const FNA_DB = {
     }
   },
 
-  /* ─── Pure-JS SHA-256 (works across http:, https:, and file:// without plaintext credentials) ─── */
-  _OWNER_EMAIL: 'owner@fnadesignlab.com',
-  _DEFAULT_AUTH_SHA256: '3c71b87c4a1a7fa217d85b1ffd0f801aabab33e1566a207a9b1d8594f41e9ff3',
-
-  _sha256Hex(ascii) {
-    const rightRotate = (value, amount) => (value >>> amount) | (value << (32 - amount));
-    const maxWord = Math.pow(2, 32);
-    let result = '';
-    const words = [];
-    const bytes = unescape(encodeURIComponent(ascii));
-    const asciiBitLength = bytes.length * 8;
-    const hash = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];
-    const k = [
-      0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
-      0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
-      0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
-      0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
-      0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
-      0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
-      0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
-      0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
-    ];
-    const msg = bytes + '\x80';
-    while ((msg.length % 64) !== 56) {
-      // padded dynamically below
-      break;
-    }
-    const padded = msg + '\x00'.repeat((56 - (msg.length % 64) + 64) % 64);
-    for (let i = 0; i < padded.length; i++) {
-      words[i >> 2] |= padded.charCodeAt(i) << ((3 - (i % 4)) * 8);
-    }
-    words[words.length] = Math.floor(asciiBitLength / maxWord);
-    words[words.length] = asciiBitLength | 0;
-
-    for (let j = 0; j < words.length; j += 16) {
-      const w = words.slice(j, j + 16);
-      const oldHash = hash.slice(0);
-      for (let i = 0; i < 64; i++) {
-        if (i >= 16) {
-          const w15 = w[i - 15], w2 = w[i - 2];
-          w[i] = (w[i - 16]
-            + (rightRotate(w15, 7) ^ rightRotate(w15, 18) ^ (w15 >>> 3))
-            + w[i - 7]
-            + (rightRotate(w2, 17) ^ rightRotate(w2, 19) ^ (w2 >>> 10))) | 0;
-        }
-        const a = hash[0], b = hash[1], c = hash[2], d = hash[3];
-        const e = hash[4], f = hash[5], g = hash[6], h = hash[7];
-        const t1 = (h + (rightRotate(e, 6) ^ rightRotate(e, 11) ^ rightRotate(e, 25)) + ((e & f) ^ ((~e) & g)) + k[i] + w[i]) | 0;
-        const t2 = ((rightRotate(a, 2) ^ rightRotate(a, 13) ^ rightRotate(a, 22)) + ((a & b) ^ (a & c) ^ (b & c))) | 0;
-        hash[7] = g; hash[6] = f; hash[5] = e; hash[4] = (d + t1) | 0;
-        hash[3] = c; hash[2] = b; hash[1] = a; hash[0] = (t1 + t2) | 0;
-      }
-      for (let i = 0; i < 8; i++) hash[i] = (hash[i] + oldHash[i]) | 0;
-    }
-    for (let i = 0; i < 8; i++) {
-      for (let j = 3; j + 1; j--) {
-        const b = (hash[i] >> (j * 8)) & 255;
-        result += (b < 16 ? '0' : '') + b.toString(16);
-      }
-    }
-    return result;
-  },
-
   /* ─── Resilient API Fetch (supports Node server + Live Server / file:// fallback) ─── */
   _apiBase: '',
 
@@ -486,7 +423,7 @@ const FNA_DB = {
     }
   },
 
-  /* ─── Secure Server-Side Owner Authentication (with Offline Static Fallback) ─── */
+  /* ─── Server-Side Owner Authentication ─── */
   _sessionUser: null,
 
   async login(email, password) {
@@ -497,27 +434,11 @@ const FNA_DB = {
         body: JSON.stringify({ email, password }),
       });
       const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Authentication failed');
-      }
+      if (!res.ok) throw new Error(data.error || 'Authentication failed');
       this._sessionUser = data.owner;
       sessionStorage.setItem('fna_owner_active', 'true');
-      sessionStorage.removeItem('fna_offline_mode');
       return { success: true, owner: data.owner };
     } catch (err) {
-      if (err.message === 'ERR_SERVER_OFFLINE') {
-        const normalizedEmail = String(email || '').trim().toLowerCase();
-        const digest = this._sha256Hex(`${normalizedEmail}::${password}`);
-        const expectedHash = localStorage.getItem('fna_local_auth_hash') || this._DEFAULT_AUTH_SHA256;
-        if (digest === expectedHash) {
-          const owner = { name: 'Principal Architect Aayushi', email: normalizedEmail };
-          this._sessionUser = owner;
-          sessionStorage.setItem('fna_owner_active', 'true');
-          sessionStorage.setItem('fna_offline_mode', 'true');
-          return { success: true, owner, offline: true };
-        }
-        return { success: false, error: 'Invalid owner credentials. Please try again.' };
-      }
       return { success: false, error: err.message };
     }
   },
@@ -528,7 +449,6 @@ const FNA_DB = {
     } catch (e) {}
     this._sessionUser = null;
     sessionStorage.removeItem('fna_owner_active');
-    sessionStorage.removeItem('fna_offline_mode');
     return true;
   },
 
@@ -540,51 +460,17 @@ const FNA_DB = {
         if (data.authenticated) {
           this._sessionUser = data.owner;
           sessionStorage.setItem('fna_owner_active', 'true');
-          sessionStorage.removeItem('fna_offline_mode');
           return true;
         }
       }
-      this._sessionUser = null;
-      sessionStorage.removeItem('fna_owner_active');
-      sessionStorage.removeItem('fna_offline_mode');
-      return false;
-    } catch (err) {
-      if (err.message === 'ERR_SERVER_OFFLINE' && sessionStorage.getItem('fna_offline_mode') === 'true' && sessionStorage.getItem('fna_owner_active') === 'true') {
-        return true;
-      }
-      this._sessionUser = null;
-      sessionStorage.removeItem('fna_owner_active');
-      return false;
-    }
+    } catch (err) {}
+    this._sessionUser = null;
+    sessionStorage.removeItem('fna_owner_active');
+    return false;
   },
 
   isLoggedIn() {
     return sessionStorage.getItem('fna_owner_active') === 'true';
-  },
-
-  async changePassword(currentPassword, newPassword) {
-    try {
-      const res = await this._apiFetch('/api/auth/change-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ currentPassword, newPassword }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Password update failed');
-      return { success: true, message: data.message };
-    } catch (err) {
-      if (err.message === 'ERR_SERVER_OFFLINE') {
-        const expectedHash = localStorage.getItem('fna_local_auth_hash') || this._DEFAULT_AUTH_SHA256;
-        const currDigest = this._sha256Hex(`${this._OWNER_EMAIL}::${currentPassword}`);
-        if (currDigest !== expectedHash) {
-          return { success: false, error: 'Current password verification failed.' };
-        }
-        const nextDigest = this._sha256Hex(`${this._OWNER_EMAIL}::${newPassword}`);
-        localStorage.setItem('fna_local_auth_hash', nextDigest);
-        return { success: true, message: 'Owner password updated in local browser registry.' };
-      }
-      return { success: false, error: err.message };
-    }
   },
 
   /* ─── Server Sync Methods ─── */
